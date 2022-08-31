@@ -217,6 +217,7 @@ namespace testFinal
         {
             try
             {
+                limpiarCampos();
                 VerificarPermisosUsuario();
             }
             catch (Exception ex)

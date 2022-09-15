@@ -4,14 +4,14 @@ using System.Text;
 
 namespace testFinal.clases
 {
-    class Notas
+    class Nota
     {
         int id;
         string titulo;
         string cuerpo;
         string fecha;
 
-        public Notas(int id,string titulo, string cuerpo, string fecha)
+        public Nota(int id,string titulo, string cuerpo, string fecha)
         {
             this.id = id;
             this.Titulo = titulo ?? throw new ArgumentNullException(nameof(titulo));

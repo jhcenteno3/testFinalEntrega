@@ -13,80 +13,97 @@ namespace testFinal
 {
     public partial class FormNotas : Form
     {
-        int cantidadMaximaNotas = 100;
-        string[] permisos = new string[4];
-        string ListadoPermisosGeneral = "crear,editar,visualizar,buscar";
-        Notas[] notas;
-        int cantidadNotasRegistradas = 0;
-        int idSeleccionadoEdicionNota;
-        char[] caracteresEscapar = { '*', ' ', '\'' };
+        readonly int CantidadMaximaNotas = 100;
+        Nota[] Notas;
+        UsuarioPermisos Permisos;
+        int CantidadNotasAgregadas = 0;
+        int IdSeleccionadoEdicionNota;
+        readonly char[] CaracteresEscapar = { '*', ' ', '\'' };
 
         public FormNotas()
         {
             InitializeComponent();
-            CrearPermisos();
+            CrearPermisosUsuarios();
             CrearArregloNotas();
             MostrarOcultarElementosPermisosUsuarios("disabled");
         }
+        /*
+         * Crea los permisos para los usuarios
+         */
+        private void CrearPermisosUsuarios()
+        {
+            this.Permisos = new UsuarioPermisos();
+            this.Permisos.CrearPermisosUsuarios();
+            
+        }
 
+        /*
+         * Crear un arreglo de Nota con el tamaño fijo estipulado en la variable del FormularioUnico
+         */
         private void CrearArregloNotas()
         {
-            notas = new Notas[cantidadMaximaNotas];
+            Notas = new Nota[CantidadMaximaNotas];
         }
 
-        private void CrearPermisos()
-        {
-            permisos[0] = "crear";
-            permisos[1] = "visualizar";
-            permisos[2] = "crear,editar";
-            permisos[3] = "visualizar,buscar";
-        }
-
+        /*
+         * Verifica los permisos por medio del indice seleccionado
+         */
         private void VerificarPermisosUsuario()
         {
-            int indiceUsuario;
-            int.TryParse(cbUsuario.SelectedIndex.ToString(), out indiceUsuario);
+            int IndiceUsuario = -1;
+            int.TryParse(cbUsuario.SelectedIndex.ToString(), out IndiceUsuario);
 
-            if (indiceUsuario > -1)
+            if (IndiceUsuario > -1)
             {
-                MostrarOcultarElementosPermisosUsuarios(permisos[indiceUsuario]);
+                MostrarOcultarElementosPermisosUsuarios(this.Permisos.ObtenerPermisosUsuario(IndiceUsuario));
             }
             else
             {
-                MostrarOcultarElementosPermisosUsuarios("disable");
+                MostrarOcultarElementosPermisosUsuarios("disabled");
             }
         }
 
-        private void MostrarOcultarElementosPermisosUsuarios(string permisosUsuario)
+        /*
+         * verifica el permiso disabled que inhabilita todo a excepcion la seleccion de usuarios
+         * en caso de no ser el permiso disabled se habilita los elementos estipulados por los permisos (Ver clase UsuarioPermisos)
+         */
+        private void MostrarOcultarElementosPermisosUsuarios(string PermisosUsuario)
         {
-            string[] permisosDivididos = ListadoPermisosGeneral.Split(',');
             OcultarDesactivarTodosElementos();
-            foreach(String ValorPermisos in permisosDivididos)
+            string[] PermisosDivididos = this.Permisos.ObtenerListadoGeneralPermisosDividos();
+            foreach (String ValorPermisos in PermisosDivididos)
             {
-                if(((ValorPermisos == "crear") || (ValorPermisos == "editar")) && permisosUsuario.Contains(ValorPermisos))
+                if (((ValorPermisos == "crear") || (ValorPermisos == "editar")) && PermisosUsuario.Contains(ValorPermisos))
                 {
                     CrearEditarElementosNotas(true);
                 }
-                
-                if (ValorPermisos == "visualizar" && permisosUsuario.Contains(ValorPermisos))
+
+                if (ValorPermisos == "visualizar" && PermisosUsuario.Contains(ValorPermisos))
                 {
                     VisualizarElementosNotas(true);
                 }
-               
-                
-                if (ValorPermisos == "buscar" && permisosUsuario.Contains(ValorPermisos))
+
+
+                if (ValorPermisos == "buscar" && PermisosUsuario.Contains(ValorPermisos))
                 {
                     BuscarElementoNotas(true);
                 }
+
             }
         }
 
+        /*
+         * Habilita o inhabilita la busqueda del elemento Textbox utilizado como buscador
+         */
         private void BuscarElementoNotas(bool v)
         {
             tbBuscador.Enabled = v;
             tbBuscador.ReadOnly = !v;
         }
 
+        /*
+         * inhabilita todos los elementos visuales a excepcion del selector de usuarios
+         */
         private void OcultarDesactivarTodosElementos()
         {
             CrearEditarElementosNotas(false);
@@ -94,18 +111,24 @@ namespace testFinal
             BuscarElementoNotas(false);
         }
 
+        /*
+         * En dependencia del parametro visualiza todas las notas o las remueve del DatagridView asociado al listado de notas
+         */
         private void VisualizarElementosNotas(bool v)
         {
             if (v)
             {
-                agregarRowsListadoNotas();
+                AgregarRowsListadoNotas();
             }
             else
             {
-                removerRowsListadoNotas();
+                RemoverRowsListadoNotas();
             }
         }
 
+        /*
+         * Habilita los elementos para agregar Notas
+         */
         private void CrearEditarElementosNotas(bool v)
         {
             btnGuardar.Visible = v;
@@ -117,30 +140,38 @@ namespace testFinal
             dtpFecha.Enabled = v;
         }
 
+        /*
+         * Valida la cantidad de notas agregadas (no puede sobrepasar a 100)
+         * Valida campos titulo, cuerpo, fecha
+         * valida formato de fecha
+         * Funciona como nueva nota y edicion de notas
+         * limpia campos para agregar nueva nota
+         * verifica permisos del usuario para habilitar o inhabilitar los componentes asociados al permiso del usuario
+         */
         private void BtnGuardar_Click(object sender, EventArgs e)
         {
             try
             {
-                validarCantidadNotasAgregadas();
-                string titulo = ValidarNull(tbTitulo.Text) && validarLonguitudTexto(tbTitulo.Text) ? tbTitulo.Text : throw new Exception("titulo invalido");
-                string cuerpo = ValidarNull(tbCuerpo.Text) && validarLonguitudTexto(tbCuerpo.Text) ? tbCuerpo.Text : throw new Exception("cuerpo invalido");
-                string fecha = ValidarNull(dtpFecha.Text) && validarLonguitudTexto(dtpFecha.Text) ? dtpFecha.Text : throw new Exception("fecha no seleccionada");
-                ValidarFormatoFecha(fecha);
-                Notas notasTemporal = new Notas(cantidadNotasRegistradas,titulo, cuerpo,fecha);
-                int indice = idSeleccionadoEdicionNota >= 0 ? idSeleccionadoEdicionNota : cantidadNotasRegistradas;
-                notas[indice] = notasTemporal;
+                ValidarCantidadNotasAgregadas();
+                string Titulo = ValidarNull(tbTitulo.Text) && ValidarLonguitudTexto(tbTitulo.Text) ? tbTitulo.Text : throw new Exception("titulo invalido");
+                string Cuerpo = ValidarNull(tbCuerpo.Text) && ValidarLonguitudTexto(tbCuerpo.Text) ? tbCuerpo.Text : throw new Exception("cuerpo invalido");
+                string Fecha = ValidarNull(dtpFecha.Text) && ValidarLonguitudTexto(dtpFecha.Text) ? dtpFecha.Text : throw new Exception("fecha no seleccionada");
+                ValidarFormatoFecha(Fecha);
+                Nota NotaTemporal = new Nota(CantidadNotasAgregadas, Titulo, Cuerpo,Fecha);
+                int Indice = IdSeleccionadoEdicionNota >= 0 ? IdSeleccionadoEdicionNota : CantidadNotasAgregadas;
+                Notas[Indice] = NotaTemporal;
                 string mensaje = "Nota agregada Exitosamente";
 
-                if (idSeleccionadoEdicionNota >= 0 && labModoEdicion.Visible)
+                if (IdSeleccionadoEdicionNota >= 0 && labModoEdicion.Visible)
                 {
                     mensaje = "Nota Actualizada Exitosamente";
                 }
                 else
                 {
-                    cantidadNotasRegistradas++;
+                    CantidadNotasAgregadas++;
                 }
 
-                limpiarCampos();
+                LimpiarCampos();
                 VerificarPermisosUsuario();
                 MessageBox.Show(mensaje);
 
@@ -151,9 +182,13 @@ namespace testFinal
             }
         }
 
-        private bool validarLonguitudTexto(string text)
+        /*
+         * valida que el texto enviado por parametro tenga mas de un caracter
+         */
+        private bool ValidarLonguitudTexto(string Texto)
         {
-            if(text.Length <= 1)
+            Texto = Texto.Trim(CaracteresEscapar);
+            if(Texto.Length <= 1)
             {
                 throw new Exception("El texto ingresado debe tener al menos dos letras");
             }
@@ -161,63 +196,76 @@ namespace testFinal
             return true;
         }
 
-        private void validarCantidadNotasAgregadas()
+        /*
+         * Valida que la cantidad de notas agregadas no sobrepase la cantidad estipulada de 100
+         */
+        private void ValidarCantidadNotasAgregadas()
         {
-            if (cantidadNotasRegistradas == cantidadMaximaNotas)
+            if (CantidadNotasAgregadas == CantidadMaximaNotas)
             {
                 throw new Exception("Ha llegado al límite de notas que se pueden agregar");
             }
         }
 
-        private void removerRowsListadoNotas()
+        /*
+         Remueve todas las notas del listado
+         */
+        private void RemoverRowsListadoNotas()
         {
             dgvListadoNotas.Rows.Clear();
         }
-
-        private void agregarRowsListadoNotas()
+        /*
+         Agrega todas las notas al listado
+         */
+        private void AgregarRowsListadoNotas()
         {
-            for (int indice = 0; indice <= cantidadNotasRegistradas; indice++)
+            for (int Indice = 0; Indice <= CantidadNotasAgregadas; Indice++)
             {
-                if(notas[indice] != null)
+                if(Notas[Indice] != null)
                 {
-                    string titulo = notas[indice].Titulo.ToString();
-                    string cuerpo = notas[indice].Cuerpo.ToString();
-                    string fecha = notas[indice].Fecha.ToString();
-                    dgvListadoNotas.Rows.Add(indice, titulo, cuerpo, fecha);
+                    string Titulo = Notas[Indice].Titulo.ToString();
+                    string Cuerpo = Notas[Indice].Cuerpo.ToString();
+                    string Fecha = Notas[Indice].Fecha.ToString();
+                    dgvListadoNotas.Rows.Add(Indice, Titulo, Cuerpo, Fecha);
                 }
             }
 
         }
-
-        private void ValidarFormatoFecha(string fecha)
+        /*
+         Valida el formato de fecha, que tenga 3 numeros separados por / y sean enteros
+         */
+        private void ValidarFormatoFecha(string Fecha)
         {
-            string[] fechaDividida = fecha.Split('/');
-            if (fechaDividida.Length != 3)
+            string[] FechaDividida = Fecha.Split('/');
+            if (FechaDividida.Length != 3)
             {
                 throw new Exception("El formato no es el adecuado");
             }
 
-            for (int indice = 0; indice < fechaDividida.Length; indice++)
+            for (int Indice = 0; Indice < FechaDividida.Length; Indice++)
             {
-                string numero = fechaDividida[indice];
-                if (!(int.TryParse(numero, out _)))
+                string Numero = FechaDividida[Indice];
+                if (!(int.TryParse(Numero, out _)))
                 {
                     throw new Exception("El formato no es correcto");
                 }
             }
         }
 
-        private bool ValidarNull(string text)
+        /*
+         Valida que el texto no sea vacio y nulo
+         */
+        private bool ValidarNull(string Texto)
         {
-            text = text.Trim(caracteresEscapar);
-            return !(text.Equals(null) || text.Equals(' ') || text.Length <= 0);
+            Texto = Texto.Trim(CaracteresEscapar);
+            return !(Texto.Equals(null) || Texto.Equals(' ') || Texto.Length <= 0);
         }
 
         private void CbUsuario_SelectedIndexChanged(object sender, EventArgs e)
         {
             try
             {
-                limpiarCampos();
+                LimpiarCampos();
                 VerificarPermisosUsuario();
             }
             catch (Exception ex)
@@ -228,84 +276,102 @@ namespace testFinal
 
         private void btnLimpiar_Click(object sender, EventArgs e)
         {
-            limpiarCampos();
+            LimpiarCampos();
         }
 
-        private void limpiarCampos()
+        /*
+         Limpia campos de titulo, cuerpo y cambia el estado de modo edicion a nuevo en caso que se estuviera en modo edicion
+         */
+        private void LimpiarCampos()
         {
             tbTitulo.Text = "";
             tbCuerpo.Text = "";
-            mostrarOcultarModoEdicion(false);
-            idSeleccionadoEdicionNota = -1;
+            MostrarOcultarModoEdicion(false);
+            IdSeleccionadoEdicionNota = -1;
         }
-
-        private void mostrarOcultarModoEdicion(bool valor)
+        /*
+         Muestra mensaje que esta en modo edicion 
+         */
+        private void MostrarOcultarModoEdicion(bool valor)
         {
             labModoEdicion.Visible = valor;
             
         }
-
-        private void dgvListadoNotas_CellDoubleClick(object sender, EventArgs e)
+        /*
+         Evento doble click sobre elementos del listado
+        Se muestra el texto modo edicion
+         */
+        private void dgvListadoNotas_CellDoubleClick(object sender, EventArgs  e)
         {
             try
             {
-                
-                int.TryParse(this.dgvListadoNotas.CurrentRow.Cells[0].Value.ToString(), out idSeleccionadoEdicionNota);
-                string titulo = this.dgvListadoNotas.CurrentRow.Cells[1].Value.ToString();
-                string cuerpo = this.dgvListadoNotas.CurrentRow.Cells[2].Value.ToString(); 
-                string fecha = this.dgvListadoNotas.CurrentRow.Cells[3].Value.ToString();
+                int.TryParse(this.dgvListadoNotas.CurrentRow.Cells[0].Value.ToString(), out IdSeleccionadoEdicionNota);
+                string Titulo = this.dgvListadoNotas.CurrentRow.Cells[1].Value.ToString();
+                string Cuerpo = this.dgvListadoNotas.CurrentRow.Cells[2].Value.ToString();
+                string Fecha = this.dgvListadoNotas.CurrentRow.Cells[3].Value.ToString();
 
-                tbTitulo.Text = titulo;
-                tbCuerpo.Text = cuerpo;
-                dtpFecha.Value = Convert.ToDateTime(fecha);
+                tbTitulo.Text = Titulo;
+                tbCuerpo.Text = Cuerpo;
+                dtpFecha.Value = Convert.ToDateTime(Fecha);
 
-                mostrarOcultarModoEdicion(true);
+                MostrarOcultarModoEdicion(true);
 
                 MessageBox.Show("Se muestra la informacion de la nota en el apartado de creacion/edicion de notas");
 
-            }catch(Exception ex)
+            }
+            catch(Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
         }
 
+        /*
+         Evento change del buscador
+            Si esta vacio el buscador se eliminan los resultados anteriores y se agregan todos los resultados
+            si no esta vacio se hace busqueda en los resultados y solo se muestran los que coincidan
+         */
         private void tbBuscador_TextChanged(object sender, EventArgs e)
         {
            
-            string palabraABuscar = tbBuscador.Text.Trim(caracteresEscapar);
-            if(palabraABuscar.Length <= 0)
+            string PalabraABuscar = tbBuscador.Text.Trim(CaracteresEscapar);
+            if(PalabraABuscar.Length <= 0)
             {
-                removerRowsListadoNotas();
-                agregarRowsListadoNotas();
+                RemoverRowsListadoNotas();
+                AgregarRowsListadoNotas();
             }
             else
             {
-                obtenerMostrarResultadosBusqueda(palabraABuscar);
+                ObtenerMostrarResultadosBusqueda(PalabraABuscar);
             }
         }
 
-        private void obtenerMostrarResultadosBusqueda(string palabra)
+        /*
+         Se filtra las coincidencias de la busqueda y las notas agregadas por los usuarios
+         */
+        private void ObtenerMostrarResultadosBusqueda(string palabra)
         {
-            removerRowsListadoNotas();
-            for (int indice = 0; indice <= cantidadNotasRegistradas; indice++)
+            RemoverRowsListadoNotas(); 
+            for (int Indice = 0; Indice <= CantidadNotasAgregadas; Indice++)
             {
-                if (notas[indice] != null)
+                if (Notas[Indice] != null)
                 {
-                    string titulo = notas[indice].Titulo.ToString();
-                    string cuerpo = notas[indice].Cuerpo.ToString();
-                    string fecha = notas[indice].Fecha.ToString();
+                    string Titulo = Notas[Indice].Titulo.ToString();
+                    string Cuerpo = Notas[Indice].Cuerpo.ToString();
+                    string Fecha = Notas[Indice].Fecha.ToString();
 
-                    if(buscarEntrePalabras(titulo, palabra) || buscarEntrePalabras(cuerpo,palabra))
+                    if(BuscarEntrePalabras(Titulo, palabra) || BuscarEntrePalabras(Cuerpo,palabra))
                     {
-                        dgvListadoNotas.Rows.Add(indice, titulo, cuerpo, fecha);
+                        dgvListadoNotas.Rows.Add(Indice, Titulo, Cuerpo, Fecha);
                     }
                 }
             }
         }
-
-        public bool buscarEntrePalabras(string texto, string palabraBuscar)
+        /*
+         busca las coincidencias entre el texto y la palabra que se envia para buscar
+         */
+        public bool BuscarEntrePalabras(string Texto, string PalabraBuscar)
         {
-            if (texto.Contains(palabraBuscar))
+            if (Texto.Contains(PalabraBuscar))
             {
                 return true;
             }

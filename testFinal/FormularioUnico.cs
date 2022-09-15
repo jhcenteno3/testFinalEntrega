@@ -301,10 +301,11 @@ namespace testFinal
          Evento doble click sobre elementos del listado
         Se muestra el texto modo edicion
          */
-        private void dgvListadoNotas_CellDoubleClick(object sender, EventArgs  e)
+        private void dgvListadoNotas_CellDoubleClick(object sender, EventArgs e)
         {
             try
             {
+                ValidarListadoNoVacio();
                 int.TryParse(this.dgvListadoNotas.CurrentRow.Cells[0].Value.ToString(), out IdSeleccionadoEdicionNota);
                 string Titulo = this.dgvListadoNotas.CurrentRow.Cells[1].Value.ToString();
                 string Cuerpo = this.dgvListadoNotas.CurrentRow.Cells[2].Value.ToString();
@@ -323,6 +324,15 @@ namespace testFinal
             {
                 MessageBox.Show(ex.Message);
             }
+        }
+
+        private void ValidarListadoNoVacio()
+        {
+            if (!(dgvListadoNotas.Rows.Count > 0))
+            {
+                throw new Exception("No hay notas para seleccionar");
+            }
+            
         }
 
         /*

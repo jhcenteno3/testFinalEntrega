@@ -121,6 +121,7 @@ namespace testFinal
             this.dgvListadoNotas.Size = new System.Drawing.Size(371, 441);
             this.dgvListadoNotas.TabIndex = 0;
             this.dgvListadoNotas.DoubleClick += new System.EventHandler(this.dgvListadoNotas_CellDoubleClick);
+           
             // 
             // Identificador
             // 
